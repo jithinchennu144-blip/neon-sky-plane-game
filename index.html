@@ -1,255 +1,222 @@
 <!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Neon Wave Boat Rush</title>
-    <style>
-      * {
-        box-sizing: border-box;
-      }
-      html,
-      body {
-        margin: 0;
-        overflow: hidden;
-        background: #062238;
-        font-family: Arial;
-        color: white;
-      }
-      canvas {
-        width: 100vw;
-        height: 100vh;
-        display: block;
-      }
-      #hud {
-        position: fixed;
-        top: 12px;
-        left: 12px;
-        font-weight: bold;
-        background: #0008;
-        padding: 12px;
-        border-radius: 12px;
-        z-index: 2;
-      }
-      #menu {
-        position: fixed;
-        inset: 0;
-        display: grid;
-        place-items: center;
-        background: #00101dcc;
-        z-index: 3;
-        text-align: center;
-      }
-      .card {
-        background: #08283c;
-        padding: 30px;
-        border: 1px solid #35dfff;
-        border-radius: 24px;
-        width: min(500px, 90vw);
-        box-shadow: 0 0 40px #00cfff44;
-      }
-      h1 {
-        font-size: 48px;
-        color: #55eeff;
-        font-style: italic;
-        text-shadow: 0 0 20px #00cfff;
-      }
-      button {
-        padding: 15px;
-        margin: 6px;
-        border: 0;
-        border-radius: 10px;
-        background: #168db0;
-        color: white;
-        font-weight: bold;
-        cursor: pointer;
-        font-size: 16px;
-      }
-      .hidden {
-        display: none !important;
-      }
-      .danger {
-        color: #ff5577;
-      }
-    </style>
-  </head>
-  <body>
-    <canvas id="c"></canvas>
-    <div id="hud">
-      🪙 Coins: <span id="coins">500</span> | ⭐ Score: <span id="score">0</span
-      ><br />🚤 Speed: <span id="speed">0</span> KM/H
-    </div>
-    <div id="menu">
-      <div class="card">
-        <h1>NEON WAVE</h1>
-        <p>BOAT RUSH</p>
-        <button id="start">🚤 START SAILING</button>
-        <p>
-          A/← and D/→ steer<br />W/↑ speed up · S/↓ brake<br />SPACE = turbo
-          boost<br />Collect coins and avoid rocks!
-        </p>
-        <p id="result"></p>
-      </div>
-    </div>
-    <script>
-      const c = document.getElementById("c"),
-        x = c.getContext("2d");
-      let W, H;
-      function resize() {
-        W = innerWidth;
-        H = innerHeight;
-        c.width = W * devicePixelRatio;
-        c.height = H * devicePixelRatio;
-        x.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
-      }
-      resize();
-      onresize = resize;
-      let play = false,
-        left = (right = up = down = boost = false),
-        score = 0,
-        coins = 500,
-        spd = 80,
-        objs = [],
-        t = 0,
-        px,
-        py;
-      onkeydown = (e) => {
-        if (e.code === "KeyA" || e.code === "ArrowLeft") left = 1;
-        if (e.code === "KeyD" || e.code === "ArrowRight") right = 1;
-        if (e.code === "KeyW" || e.code === "ArrowUp") up = 1;
-        if (e.code === "KeyS" || e.code === "ArrowDown") down = 1;
-        if (e.code === "Space") boost = 1;
-      };
-      onkeyup = (e) => {
-        if (e.code === "KeyA" || e.code === "ArrowLeft") left = 0;
-        if (e.code === "KeyD" || e.code === "ArrowRight") right = 0;
-        if (e.code === "KeyW" || e.code === "ArrowUp") up = 0;
-        if (e.code === "KeyS" || e.code === "ArrowDown") down = 0;
-        if (e.code === "Space") boost = 0;
-      };
-      function spawn() {
-        objs.push({
-          x: 30 + Math.random() * (W - 60),
-          y: -50,
-          r: 15 + Math.random() * 18,
-          type: Math.random() < 0.25 ? "coin" : "rock",
-        });
-      }
-      function draw() {
-        let g = x.createLinearGradient(0, 0, 0, H);
-        g.addColorStop(0, "#07304e");
-        g.addColorStop(1, "#08a1b2");
-        x.fillStyle = g;
-        x.fillRect(0, 0, W, H);
-        for (let i = 0; i < 12; i++) {
-          let y = (i * 100 + t * 2) % H;
-          x.strokeStyle = "#baffff33";
-          x.beginPath();
-          x.moveTo(0, y);
-          x.lineTo(W, y);
-          x.stroke();
-        }
-        for (let o of objs) {
-          x.save();
-          x.translate(o.x, o.y);
-          x.fillStyle = o.type === "coin" ? "#ffd43b" : "#536b75";
-          x.shadowBlur = 15;
-          x.shadowColor = x.fillStyle;
-          x.beginPath();
-          x.arc(0, 0, o.r, 0, 7);
-          x.fill();
-          if (o.type === "coin") {
-            x.fillStyle = "#704700";
-            x.font = "bold 15px Arial";
-            x.textAlign = "center";
-            x.fillText("$", 0, 5);
-          }
-          x.restore();
-        }
-        x.save();
-        x.translate(px, py);
-        x.fillStyle = "#55eaff";
-        x.shadowBlur = 20;
-        x.shadowColor = "#00eaff";
-        x.beginPath();
-        x.moveTo(0, -40);
-        x.lineTo(25, 28);
-        x.lineTo(0, 42);
-        x.lineTo(-25, 28);
-        x.closePath();
-        x.fill();
-        x.fillStyle = "#09263b";
-        x.fillRect(-10, -12, 20, 28);
-        if (boost) {
-          x.fillStyle = "#ff8b00";
-          x.beginPath();
-          x.moveTo(-8, 35);
-          x.lineTo(0, 80 + Math.random() * 20);
-          x.lineTo(8, 35);
-          x.fill();
-        }
-        x.restore();
-      }
-      function update(dt) {
-        if (!play) return;
-        t += dt * 100;
-        spd += (boost ? 3 : 1.2) * dt * 60;
-        if (down) spd -= 3 * dt * 60;
-        spd = Math.max(60, Math.min(boost ? 400 : 280, spd));
-        if (left) px -= 6 * dt * 60;
-        if (right) px += 6 * dt * 60;
-        if (up) py -= 6 * dt * 60;
-        if (down) py += 6 * dt * 60;
-        px = Math.max(30, Math.min(W - 30, px));
-        py = Math.max(80, Math.min(H - 70, py));
-        if (--timer <= 0) {
-          spawn();
-          timer = 0.4 + Math.random() * 0.6;
-        }
-        for (let i = objs.length - 1; i >= 0; i--) {
-          let o = objs[i];
-          o.y += (spd * 0.02 + 2) * dt * 60;
-          if (Math.hypot(o.x - px, o.y - py) < o.r + 25) {
-            if (o.type === "coin") {
-              coins += 10;
-              score += 100;
-              objs.splice(i, 1);
-            } else {
-              play = false;
-              document.getElementById("result").innerHTML =
-                '<b class="danger">💥 WRECKED! Score: ' +
-                Math.floor(score) +
-                '</b><br><button onclick="start()">SAIL AGAIN</button>';
-              return;
-            }
-          }
-          if (o.y > H + 80) objs.splice(i, 1);
-        }
-        score += spd * dt * 0.08;
-        document.getElementById("coins").textContent = coins;
-        document.getElementById("score").textContent = Math.floor(score);
-        document.getElementById("speed").textContent = Math.floor(spd);
-      }
-      let timer = 1;
-      function start() {
-        document.getElementById("menu").classList.add("hidden");
-        play = true;
-        score = 0;
-        spd = 80;
-        objs = [];
-        px = W / 2;
-        py = H * 0.7;
-        timer = 1;
-      }
-      document.getElementById("start").onclick = start;
-      function loop(now) {
-        let dt = Math.min(0.05, (now - (loop.last || now)) / 1000);
-        loop.last = now;
-        update(dt);
-        draw();
-        requestAnimationFrame(loop);
-      }
-      requestAnimationFrame(loop);
-    </script>
-  </body>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Neon Sky: Flight Rush</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#050912;font-family:Arial,sans-serif}
+canvas{display:block;width:100vw;height:100vh}
+button{border:0;cursor:pointer;color:white;font-weight:900}
+.hidden{display:none!important}
+.overlay{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:rgba(0,4,15,.86)}
+.card{width:min(700px,94vw);max-height:94vh;overflow:auto;padding:30px;border-radius:24px;background:#081525;border:1px solid #28415c;box-shadow:0 25px 100px #000;text-align:center}
+.logo{font-size:54px;font-weight:1000;font-style:italic;color:#52e8ff;text-shadow:0 0 25px #00bfff}
+.subtitle{font-size:11px;letter-spacing:4px;color:#8295ae;margin:8px 0 25px}
+.primary{width:100%;padding:16px;border-radius:12px;background:linear-gradient(90deg,#00bde8,#6950ff)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.buy,.back{width:100%;padding:14px;border-radius:10px;background:#172a42}
+.item{padding:17px;border-radius:14px;background:#0d1c2e;border:1px solid #29425b;text-align:left}
+.item h3{margin:7px 0}.item p{font-size:11px;color:#91a1b5;margin-bottom:9px}.icon{font-size:30px}
+.level{font-size:10px;color:#53e9ff;font-weight:bold;display:block;margin-bottom:8px}
+#hud{position:fixed;inset:0;z-index:10;pointer-events:none;color:#fff}
+.top{display:flex;gap:9px;padding:14px}.box{padding:8px 13px;border-radius:10px;background:rgba(0,0,0,.68);border:1px solid #30465e}
+.label{font-size:9px;letter-spacing:2px;color:#8395aa}.value{font-size:19px;font-weight:900}
+#menuButton{position:absolute;right:14px;top:14px;padding:11px 17px;border-radius:10px;background:#101f33;border:1px solid #3a5069;pointer-events:auto}
+#speed{position:absolute;right:25px;bottom:25px;font-size:42px;font-weight:1000;font-style:italic;text-shadow:0 0 20px #32dfff}
+#speed small{font-size:10px;color:#8498b0}
+#fuelBar{position:absolute;left:50%;bottom:28px;transform:translateX(-50%);width:250px;height:13px;border-radius:20px;overflow:hidden;background:#111d2c;border:1px solid #3b5069}
+#fuelFill{height:100%;width:100%;background:linear-gradient(90deg,#00d9ff,#6655ff,#ff39bd)}
+.danger{border:2px solid #ff365f;box-shadow:0 0 50px rgba(255,0,70,.35)}
+.gameOverTitle{color:#ff365f;font-size:58px;font-weight:1000;font-style:italic}
+@media(max-width:650px){.grid{grid-template-columns:1fr}.logo{font-size:40px}.gameOverTitle{font-size:43px}}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="hud">
+  <div class="top">
+    <div class="box"><div class="label">COINS</div><div class="value" id="coins">500</div></div>
+    <div class="box"><div class="label">SCORE</div><div class="value" id="score">0</div></div>
+    <div class="box"><div class="label">ALTITUDE</div><div class="value" id="altitude">1000</div></div>
+  </div>
+  <button id="menuButton">☰ MENU</button>
+  <div id="speed"><span id="speedValue">0</span> <small>KM/H</small></div>
+  <div id="fuelBar"><div id="fuelFill"></div></div>
+</div>
+
+<div class="overlay" id="menu">
+ <div class="card">
+  <div class="logo">NEON SKY</div>
+  <div class="subtitle">FLIGHT RUSH</div>
+  <button class="primary" id="start">✈ START FLIGHT</button>
+  <div class="grid">
+   <button class="buy" id="shopButton">🛒 SHOP</button>
+   <button class="buy" id="hangarButton">✈ HANGAR</button>
+  </div>
+  <p style="color:#91a1b5;font-size:12px;line-height:1.9;margin-top:22px">
+  A / ← = LEFT &nbsp; D / → = RIGHT<br>
+  W / ↑ = CLIMB &nbsp; S / ↓ = DIVE<br>
+  SPACE = TURBO BOOST 🚀<br>
+  Avoid mountains, drones and missiles. Collect coins!
+  </p>
+ </div>
+</div>
+
+<div class="overlay hidden" id="gameOver">
+ <div class="card danger">
+  <div style="font-size:55px">💥✈️💥</div>
+  <div class="gameOverTitle">CRASHED!</div>
+  <div class="subtitle">YOUR PLANE HIT AN OBSTACLE</div>
+  <div style="color:#a4b2c4;margin:15px 0 25px">FINAL SCORE<strong id="finalScore" style="display:block;color:white;font-size:32px;margin-top:5px">0</strong></div>
+  <button class="primary" id="restart">✈ FLY AGAIN</button>
+  <button class="back" id="gameOverMenu" style="margin-top:12px">☰ MAIN MENU</button>
+ </div>
+</div>
+
+<div class="overlay hidden" id="shop">
+ <div class="card">
+  <div class="logo" style="font-size:45px">SHOP</div><div class="subtitle">FLIGHT UPGRADES</div>
+  <div class="level">🪙 <span id="shopCoins">500</span></div>
+  <div class="grid">
+   <div class="item"><div class="icon">🚀</div><h3>TURBO POWER</h3><p>Increase boost strength.</p><span class="level" id="turboLevel">LEVEL 1</span><button class="buy upgrade" data-type="turbo">BUY — 250</button></div>
+   <div class="item"><div class="icon">🛡️</div><h3>SHIELD</h3><p>More protection from collisions.</p><span class="level" id="shieldLevel">LEVEL 1</span><button class="buy upgrade" data-type="shield">BUY — 350</button></div>
+   <div class="item"><div class="icon">⚡</div><h3>ENGINE</h3><p>Increase maximum speed.</p><span class="level" id="engineLevel">LEVEL 1</span><button class="buy upgrade" data-type="engine">BUY — 400</button></div>
+   <div class="item"><div class="icon">🪙</div><h3>COIN MAGNET</h3><p>Collect coins from farther away.</p><span class="level" id="magnetLevel">LEVEL 1</span><button class="buy upgrade" data-type="magnet">BUY — 300</button></div>
+  </div>
+  <button class="back" id="shopBack" style="margin-top:12px">← BACK</button>
+ </div>
+</div>
+
+<div class="overlay hidden" id="hangar">
+ <div class="card">
+  <div class="logo" style="font-size:45px">HANGAR</div><div class="subtitle">CHOOSE YOUR AIRCRAFT</div>
+  <div class="grid">
+   <div class="item"><div class="icon">✈️</div><h3>SKY FALCON</h3><p>Balanced starter aircraft.</p><button class="buy planeButton" data-plane="falcon">SELECTED ✓</button></div>
+   <div class="item"><div class="icon">🛩️</div><h3>JET R</h3><p>Fast acceleration.</p><button class="buy planeButton" data-plane="jet">1,500 COINS</button></div>
+   <div class="item"><div class="icon">🚀</div><h3>HYPER JET</h3><p>Very high top speed.</p><button class="buy planeButton" data-plane="hyper">3,500 COINS</button></div>
+   <div class="item"><div class="icon">👑</div><h3>STAR WING</h3><p>Elite aircraft.</p><button class="buy planeButton" data-plane="star">7,500 COINS</button></div>
+  </div>
+  <button class="back" id="hangarBack" style="margin-top:12px">← BACK</button>
+ </div>
+</div>
+
+<script>
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+let W=innerWidth,H=innerHeight, dpr=devicePixelRatio||1;
+function resize(){W=innerWidth;H=innerHeight;canvas.width=W*dpr;canvas.height=H*dpr;canvas.style.width=W+'px';canvas.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0);player.x=W/2;player.y=H*.55}
+addEventListener('resize',resize);
+
+let running=false,score=0,coins=500,fuel=100,altitude=1000,boost=false,left=false,right=false,up=false,down=false;
+let selectedPlane='falcon',objects=[],particles=[],timer=0,world=0;
+const upgrades={turbo:1,shield:1,engine:1,magnet:1};
+const planes={
+ falcon:{speed:260,turn:6,color:'#55eaff'},jet:{speed:310,turn:7,color:'#ff4f83'},hyper:{speed:370,turn:8,color:'#ffae42'},star:{speed:440,turn:9,color:'#b678ff'}
+};
+const player={x:W/2,y:H*.55,w:54,h:72,speed:0,color:planes.falcon.color};
+
+function key(e,on){
+ if(e.target.tagName==='INPUT')return;
+ if(['ArrowLeft','KeyA'].includes(e.code)){left=on;e.preventDefault()}
+ if(['ArrowRight','KeyD'].includes(e.code)){right=on;e.preventDefault()}
+ if(['ArrowUp','KeyW'].includes(e.code)){up=on;e.preventDefault()}
+ if(['ArrowDown','KeyS'].includes(e.code)){down=on;e.preventDefault()}
+ if(e.code==='Space'){boost=on;e.preventDefault()}
+}
+addEventListener('keydown',e=>key(e,true));addEventListener('keyup',e=>key(e,false));
+
+function spawn(type){
+ const x=80+Math.random()*(W-160);
+ objects.push({type,x,y:-80-Math.random()*300,size:25+Math.random()*22,speed:1+Math.random()*2,rot:Math.random()*6.2});
+}
+function drawBackground(){
+ ctx.fillStyle='#071426';ctx.fillRect(0,0,W,H);
+ let grad=ctx.createLinearGradient(0,0,0,H);grad.addColorStop(0,'#07152c');grad.addColorStop(1,'#0b3550');ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
+ for(let i=0;i<80;i++){let x=(i*137+world*.2)%W,y=(i*79+world*.5)%H;ctx.fillStyle='rgba(150,230,255,.5)';ctx.fillRect(x,y,2,2)}
+ ctx.fillStyle='#123c43';
+ for(let i=0;i<8;i++){let x=i*180-(world*.3%180);ctx.beginPath();ctx.moveTo(x,H);ctx.lineTo(x+90,H*.48);ctx.lineTo(x+180,H);ctx.fill()}
+ ctx.strokeStyle='rgba(76,222,255,.22)';ctx.lineWidth=2;
+ for(let i=0;i<12;i++){let y=(i*100+world*1.4)%H;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+}
+function drawPlane(){
+ ctx.save();ctx.translate(player.x,player.y);
+ ctx.shadowBlur=boost?35:15;ctx.shadowColor=player.color;ctx.fillStyle=player.color;
+ ctx.beginPath();ctx.moveTo(0,-40);ctx.lineTo(14,-10);ctx.lineTo(38,18);ctx.lineTo(13,15);ctx.lineTo(8,35);ctx.lineTo(-8,35);ctx.lineTo(-13,15);ctx.lineTo(-38,18);ctx.lineTo(-14,-10);ctx.closePath();ctx.fill();
+ ctx.shadowBlur=0;ctx.fillStyle='#071525';ctx.beginPath();ctx.ellipse(0,-9,8,17,0,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle='#fff';ctx.fillRect(-4,-34,8,8);
+ if(boost){ctx.fillStyle='#ff8a00';ctx.beginPath();ctx.moveTo(-7,30);ctx.lineTo(0,65+Math.random()*25);ctx.lineTo(7,30);ctx.fill()}
+ ctx.restore();
+}
+function drawObject(o){
+ ctx.save();ctx.translate(o.x,o.y);ctx.rotate(o.rot);
+ if(o.type==='coin'){ctx.fillStyle='#ffd34f';ctx.shadowBlur=18;ctx.shadowColor='#ffb300';ctx.beginPath();ctx.arc(0,0,o.size*.55,0,Math.PI*2);ctx.fill();ctx.fillStyle='#7b4b00';ctx.font='bold 18px Arial';ctx.textAlign='center';ctx.fillText('$',0,6)}
+ else if(o.type==='drone'){ctx.fillStyle='#ff3e67';ctx.shadowBlur=15;ctx.shadowColor='#ff174f';ctx.fillRect(-o.size,-o.size*.35,o.size*2,o.size*.7);ctx.fillStyle='#111';ctx.fillRect(-o.size*.3,-o.size*.55,o.size*.6,o.size*1.1);ctx.fillStyle='#fff';ctx.fillRect(-o.size*.7,-3,8,6);ctx.fillRect(o.size*.45,-3,8,6)}
+ else{ctx.fillStyle='#4e5968';ctx.shadowBlur=12;ctx.shadowColor='#7c91a8';ctx.beginPath();ctx.moveTo(0,-o.size*1.4);ctx.lineTo(o.size, o.size);ctx.lineTo(0,o.size*.55);ctx.lineTo(-o.size,o.size);ctx.closePath();ctx.fill();ctx.fillStyle='#242c38';ctx.beginPath();ctx.arc(0,0,o.size*.3,0,Math.PI*2);ctx.fill()}
+ ctx.restore();
+}
+function update(dt){
+ if(!running)return;
+ world+=dt*100;
+ const p=planes[selectedPlane];
+ let max=p.speed+(upgrades.engine-1)*28;
+ player.speed+=(boost&&fuel>0?3.5:1.3)*dt*60;
+ if(boost&&fuel>0){player.speed+=2.5*(1+upgrades.turbo*.15)*dt*60;fuel-=24*dt}else fuel=Math.min(100,fuel+9*dt);
+ if(down)player.speed-=3*dt*60;
+ player.speed=Math.max(80,Math.min(max+(boost?100:0),player.speed));
+ const turn=p.turn+(upgrades.engine-1)*.5;
+ if(left)player.x-=turn*dt*60;if(right)player.x+=turn*dt*60;
+ if(up)player.y-=turn*dt*60;if(down)player.y+=turn*dt*60;
+ player.x=Math.max(45,Math.min(W-45,player.x));player.y=Math.max(100,Math.min(H-100,player.y));
+ altitude+= (up?70:down?-70:10)*dt;altitude=Math.max(0,Math.min(9999,altitude));
+ timer-=dt;if(timer<=0){let r=Math.random();spawn(r<.28?'coin':r<.65?'drone':'mountain');timer=.35+Math.random()*.5}
+ for(let i=objects.length-1;i>=0;i--){let o=objects[i];o.y+=(player.speed*.018+o.speed)*dt*60;o.rot+=dt;
+  let dx=o.x-player.x,dy=o.y-player.y,dist=Math.hypot(dx,dy);
+  if(dist<o.size+(o.type==='coin'?25:30)){
+   if(o.type==='coin'){coins+=10;score+=100}else{if(upgrades.shield>1){upgrades.shield--;o.y=H+200}else return gameOver()}
+   objects.splice(i,1);continue;
+  }
+  if(o.y>H+120)objects.splice(i,1);
+ }
+ score+=player.speed*dt*.08;
+ document.getElementById('score').textContent=Math.floor(score);
+ document.getElementById('coins').textContent=Math.floor(coins);
+ document.getElementById('shopCoins').textContent=Math.floor(coins);
+ document.getElementById('altitude').textContent=Math.floor(altitude);
+ document.getElementById('speedValue').textContent=Math.floor(player.speed);
+ document.getElementById('fuelFill').style.width=fuel+'%';
+}
+function draw(){drawBackground();for(const o of objects)drawObject(o);drawPlane()}
+function loop(t){let dt=Math.min((t-(loop.last||t))/1000,.05);loop.last=t;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+
+function startGame(){document.querySelectorAll('.overlay').forEach(x=>x.classList.add('hidden'));running=true;score=0;fuel=100;altitude=1000;player.x=W/2;player.y=H*.55;player.speed=80;objects=[];timer=1}
+function gameOver(){running=false;boost=false;document.getElementById('finalScore').textContent=Math.floor(score);document.getElementById('gameOver').classList.remove('hidden')}
+document.getElementById('start').onclick=startGame;
+document.getElementById('restart').onclick=startGame;
+document.getElementById('gameOverMenu').onclick=()=>{document.getElementById('gameOver').classList.add('hidden');document.getElementById('menu').classList.remove('hidden')};
+document.getElementById('menuButton').onclick=()=>{if(running){running=false;objects=[];document.getElementById('menu').classList.remove('hidden')}};
+
+function openPanel(id){document.querySelectorAll('.overlay').forEach(x=>x.classList.add('hidden'));document.getElementById(id).classList.remove('hidden')}
+document.getElementById('shopButton').onclick=()=>openPanel('shop');
+document.getElementById('hangarButton').onclick=()=>openPanel('hangar');
+document.getElementById('shopBack').onclick=()=>openPanel('menu');
+document.getElementById('hangarBack').onclick=()=>openPanel('menu');
+
+document.querySelectorAll('.upgrade').forEach(btn=>btn.onclick=()=>{
+ const type=btn.dataset.type,prices={turbo:250,shield:350,engine:400,magnet:300},price=prices[type];
+ if(coins<price){btn.textContent='NOT ENOUGH COINS';return}
+ coins-=price;upgrades[type]++;document.getElementById(type+'Level').textContent='LEVEL '+upgrades[type];btn.textContent='LEVEL '+upgrades[type]+' ✓';
+});
+document.querySelectorAll('.planeButton').forEach(btn=>btn.onclick=()=>{
+ const name=btn.dataset.plane,prices={falcon:0,jet:1500,hyper:3500,star:7500};
+ if(selectedPlane===name)return;
+ if(coins<prices[name]){btn.textContent='NOT ENOUGH COINS';return}
+ coins-=prices[name];selectedPlane=name;player.color=planes[name].color;
+ document.querySelectorAll('.planeButton').forEach(b=>b.textContent=b.dataset.plane===name?'SELECTED ✓':(prices[b.dataset.plane]||0)+' COINS');
+});
+resize();
+</script>
+</body>
 </html>
