@@ -1,0 +1,255 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Neon Wave Boat Rush</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        overflow: hidden;
+        background: #062238;
+        font-family: Arial;
+        color: white;
+      }
+      canvas {
+        width: 100vw;
+        height: 100vh;
+        display: block;
+      }
+      #hud {
+        position: fixed;
+        top: 12px;
+        left: 12px;
+        font-weight: bold;
+        background: #0008;
+        padding: 12px;
+        border-radius: 12px;
+        z-index: 2;
+      }
+      #menu {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        background: #00101dcc;
+        z-index: 3;
+        text-align: center;
+      }
+      .card {
+        background: #08283c;
+        padding: 30px;
+        border: 1px solid #35dfff;
+        border-radius: 24px;
+        width: min(500px, 90vw);
+        box-shadow: 0 0 40px #00cfff44;
+      }
+      h1 {
+        font-size: 48px;
+        color: #55eeff;
+        font-style: italic;
+        text-shadow: 0 0 20px #00cfff;
+      }
+      button {
+        padding: 15px;
+        margin: 6px;
+        border: 0;
+        border-radius: 10px;
+        background: #168db0;
+        color: white;
+        font-weight: bold;
+        cursor: pointer;
+        font-size: 16px;
+      }
+      .hidden {
+        display: none !important;
+      }
+      .danger {
+        color: #ff5577;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="c"></canvas>
+    <div id="hud">
+      🪙 Coins: <span id="coins">500</span> | ⭐ Score: <span id="score">0</span
+      ><br />🚤 Speed: <span id="speed">0</span> KM/H
+    </div>
+    <div id="menu">
+      <div class="card">
+        <h1>NEON WAVE</h1>
+        <p>BOAT RUSH</p>
+        <button id="start">🚤 START SAILING</button>
+        <p>
+          A/← and D/→ steer<br />W/↑ speed up · S/↓ brake<br />SPACE = turbo
+          boost<br />Collect coins and avoid rocks!
+        </p>
+        <p id="result"></p>
+      </div>
+    </div>
+    <script>
+      const c = document.getElementById("c"),
+        x = c.getContext("2d");
+      let W, H;
+      function resize() {
+        W = innerWidth;
+        H = innerHeight;
+        c.width = W * devicePixelRatio;
+        c.height = H * devicePixelRatio;
+        x.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+      }
+      resize();
+      onresize = resize;
+      let play = false,
+        left = (right = up = down = boost = false),
+        score = 0,
+        coins = 500,
+        spd = 80,
+        objs = [],
+        t = 0,
+        px,
+        py;
+      onkeydown = (e) => {
+        if (e.code === "KeyA" || e.code === "ArrowLeft") left = 1;
+        if (e.code === "KeyD" || e.code === "ArrowRight") right = 1;
+        if (e.code === "KeyW" || e.code === "ArrowUp") up = 1;
+        if (e.code === "KeyS" || e.code === "ArrowDown") down = 1;
+        if (e.code === "Space") boost = 1;
+      };
+      onkeyup = (e) => {
+        if (e.code === "KeyA" || e.code === "ArrowLeft") left = 0;
+        if (e.code === "KeyD" || e.code === "ArrowRight") right = 0;
+        if (e.code === "KeyW" || e.code === "ArrowUp") up = 0;
+        if (e.code === "KeyS" || e.code === "ArrowDown") down = 0;
+        if (e.code === "Space") boost = 0;
+      };
+      function spawn() {
+        objs.push({
+          x: 30 + Math.random() * (W - 60),
+          y: -50,
+          r: 15 + Math.random() * 18,
+          type: Math.random() < 0.25 ? "coin" : "rock",
+        });
+      }
+      function draw() {
+        let g = x.createLinearGradient(0, 0, 0, H);
+        g.addColorStop(0, "#07304e");
+        g.addColorStop(1, "#08a1b2");
+        x.fillStyle = g;
+        x.fillRect(0, 0, W, H);
+        for (let i = 0; i < 12; i++) {
+          let y = (i * 100 + t * 2) % H;
+          x.strokeStyle = "#baffff33";
+          x.beginPath();
+          x.moveTo(0, y);
+          x.lineTo(W, y);
+          x.stroke();
+        }
+        for (let o of objs) {
+          x.save();
+          x.translate(o.x, o.y);
+          x.fillStyle = o.type === "coin" ? "#ffd43b" : "#536b75";
+          x.shadowBlur = 15;
+          x.shadowColor = x.fillStyle;
+          x.beginPath();
+          x.arc(0, 0, o.r, 0, 7);
+          x.fill();
+          if (o.type === "coin") {
+            x.fillStyle = "#704700";
+            x.font = "bold 15px Arial";
+            x.textAlign = "center";
+            x.fillText("$", 0, 5);
+          }
+          x.restore();
+        }
+        x.save();
+        x.translate(px, py);
+        x.fillStyle = "#55eaff";
+        x.shadowBlur = 20;
+        x.shadowColor = "#00eaff";
+        x.beginPath();
+        x.moveTo(0, -40);
+        x.lineTo(25, 28);
+        x.lineTo(0, 42);
+        x.lineTo(-25, 28);
+        x.closePath();
+        x.fill();
+        x.fillStyle = "#09263b";
+        x.fillRect(-10, -12, 20, 28);
+        if (boost) {
+          x.fillStyle = "#ff8b00";
+          x.beginPath();
+          x.moveTo(-8, 35);
+          x.lineTo(0, 80 + Math.random() * 20);
+          x.lineTo(8, 35);
+          x.fill();
+        }
+        x.restore();
+      }
+      function update(dt) {
+        if (!play) return;
+        t += dt * 100;
+        spd += (boost ? 3 : 1.2) * dt * 60;
+        if (down) spd -= 3 * dt * 60;
+        spd = Math.max(60, Math.min(boost ? 400 : 280, spd));
+        if (left) px -= 6 * dt * 60;
+        if (right) px += 6 * dt * 60;
+        if (up) py -= 6 * dt * 60;
+        if (down) py += 6 * dt * 60;
+        px = Math.max(30, Math.min(W - 30, px));
+        py = Math.max(80, Math.min(H - 70, py));
+        if (--timer <= 0) {
+          spawn();
+          timer = 0.4 + Math.random() * 0.6;
+        }
+        for (let i = objs.length - 1; i >= 0; i--) {
+          let o = objs[i];
+          o.y += (spd * 0.02 + 2) * dt * 60;
+          if (Math.hypot(o.x - px, o.y - py) < o.r + 25) {
+            if (o.type === "coin") {
+              coins += 10;
+              score += 100;
+              objs.splice(i, 1);
+            } else {
+              play = false;
+              document.getElementById("result").innerHTML =
+                '<b class="danger">💥 WRECKED! Score: ' +
+                Math.floor(score) +
+                '</b><br><button onclick="start()">SAIL AGAIN</button>';
+              return;
+            }
+          }
+          if (o.y > H + 80) objs.splice(i, 1);
+        }
+        score += spd * dt * 0.08;
+        document.getElementById("coins").textContent = coins;
+        document.getElementById("score").textContent = Math.floor(score);
+        document.getElementById("speed").textContent = Math.floor(spd);
+      }
+      let timer = 1;
+      function start() {
+        document.getElementById("menu").classList.add("hidden");
+        play = true;
+        score = 0;
+        spd = 80;
+        objs = [];
+        px = W / 2;
+        py = H * 0.7;
+        timer = 1;
+      }
+      document.getElementById("start").onclick = start;
+      function loop(now) {
+        let dt = Math.min(0.05, (now - (loop.last || now)) / 1000);
+        loop.last = now;
+        update(dt);
+        draw();
+        requestAnimationFrame(loop);
+      }
+      requestAnimationFrame(loop);
+    </script>
+  </body>
+</html>
